@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import '../Auth.css';
 
 export default function Login() {
@@ -11,12 +12,25 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [rememberId, setRememberId] = useState(false);
   const [autoLogin, setAutoLogin] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Integrate actual Supabase signInWithPassword
-    // For UI demonstration, we just route to dashboard
-    router.push('/');
+    setLoading(true);
+    setError(null);
+
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      router.push('/');
+    }
   };
 
   return (
@@ -29,6 +43,7 @@ export default function Login() {
         </div>
 
         <form className="auth-form" onSubmit={handleLogin}>
+          {error && <div className="text-danger" style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</div>}
           <div className="input-group">
             <label className="input-label" htmlFor="email">Email address</label>
             <input 
@@ -77,7 +92,9 @@ export default function Login() {
             <a href="#" className="auth-link" style={{ marginLeft: 0 }}>Forgot password?</a>
           </div>
 
-          <button type="submit" className="btn-primary auth-btn">Sign In</button>
+          <button type="submit" className="btn-primary auth-btn" disabled={loading}>
+            {loading ? 'Signing In...' : 'Sign In'}
+          </button>
         </form>
 
         <div className="auth-footer">

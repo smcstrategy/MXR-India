@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { supabase } from '@/lib/supabase';
 import '../Auth.css';
 
 export default function SignUp() {
@@ -10,12 +11,31 @@ export default function SignUp() {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSignUp = (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Integrate actual Supabase signUp
-    // For UI demonstration, route to login or dashboard
-    router.push('/login');
+    setLoading(true);
+    setError(null);
+
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: name,
+        }
+      }
+    });
+
+    if (error) {
+      setError(error.message);
+      setLoading(false);
+    } else {
+      alert('Sign up successful! Please check your email to verify your account or proceed to login.');
+      router.push('/login');
+    }
   };
 
   return (
@@ -28,6 +48,7 @@ export default function SignUp() {
         </div>
 
         <form className="auth-form" onSubmit={handleSignUp}>
+          {error && <div className="text-danger" style={{ color: 'var(--danger-color)', fontSize: '0.85rem' }}>{error}</div>}
           <div className="input-group">
             <label className="input-label" htmlFor="name">Full Name</label>
             <input 
@@ -68,7 +89,9 @@ export default function SignUp() {
             />
           </div>
 
-          <button type="submit" className="btn-primary auth-btn">Create Account</button>
+          <button type="submit" className="btn-primary auth-btn" disabled={loading}>
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </button>
         </form>
 
         <div className="auth-footer">
