@@ -1,5 +1,7 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "../globals.css";
+import Sidebar from "@/components/Sidebar";
+import Header from "@/components/Header";
 
 export const metadata: Metadata = {
   title: "MXR India | Project Status",
@@ -14,7 +16,15 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        {children}
+        <div className="app-container">
+          <Sidebar />
+          <main className="main-content">
+            <Header />
+            <div className="content-area">
+              {children}
+            </div>
+          </main>
+        </div>
       </body>
     </html>
   );
