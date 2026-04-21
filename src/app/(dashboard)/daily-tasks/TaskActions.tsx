@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { MoreVertical, edit2, Trash2, Edit2, Loader2 } from 'lucide-react';
+import { MoreVertical, Trash2, Edit2, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { deleteDailyTask } from './actions';
 import { useRouter } from 'next/navigation';
