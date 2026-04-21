@@ -1,0 +1,17 @@
+{
+  "name": "MXR India",
+  "short_name": "MXR India",
+  "description": "Daily reporting and project status tool for MXR India branch",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#3b82f6",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
