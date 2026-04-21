@@ -9,26 +9,22 @@ export const metadata: Metadata = {
   description: "Daily reporting and project status tool for MXR India branch",
 };
 
-export default function RootLayout({
+export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body>
-        <AuthGuard>
-          <div className="app-container">
-            <Sidebar />
-            <main className="main-content">
-              <Header />
-              <div className="content-area">
-                {children}
-              </div>
-            </main>
+    <AuthGuard>
+      <div className="app-container">
+        <Sidebar />
+        <main className="main-content">
+          <Header />
+          <div className="content-area">
+            {children}
           </div>
-        </AuthGuard>
-      </body>
-    </html>
+        </main>
+      </div>
+    </AuthGuard>
   );
 }
