@@ -25,17 +25,25 @@ export async function listAllUsers(): Promise<UserRecord[]> {
 }
 
 export async function resetUserPassword(userId: string): Promise<void> {
+  console.log('[Admin Action] Resetting password for:', userId);
   const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
     password: '111111',
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('[Admin Action] Reset password error:', error);
+    throw new Error(error.message);
+  }
 }
 
 export async function approveUser(userId: string): Promise<void> {
+  console.log('[Admin Action] Approving user:', userId);
   const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
     user_metadata: { approved: true },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('[Admin Action] Approve error:', error);
+    throw new Error(error.message);
+  }
 }
 
 export async function rejectUser(userId: string): Promise<void> {
@@ -45,8 +53,12 @@ export async function rejectUser(userId: string): Promise<void> {
 
 export async function toggleUserRole(userId: string, currentRole: string): Promise<void> {
   const newRole = currentRole === 'admin' ? 'user' : 'admin';
+  console.log('[Admin Action] Toggling user role. ID:', userId, 'From:', currentRole, 'To:', newRole);
   const { error } = await supabaseAdmin.auth.admin.updateUserById(userId, {
     user_metadata: { role: newRole },
   });
-  if (error) throw new Error(error.message);
+  if (error) {
+    console.error('[Admin Action] Role toggle error:', error);
+    throw new Error(error.message);
+  }
 }

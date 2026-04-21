@@ -42,63 +42,83 @@ export default function AdminPage() {
     setTimeout(() => setMsg(null), 3000);
   };
 
-  const handleApprove = async (user: UserRecord) => {
+  const handleApprove = async (user: UserRecord, e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
+    console.log('[Admin] Approving user:', user.email);
     setAction({ id: user.id, type: 'approve' });
     try {
       await approveUser(user.id);
       showMsg(user.id, true, 'Approved');
       await loadUsers();
     } catch (e) {
+      console.error('[Admin] Approve error:', e);
       showMsg(user.id, false, e instanceof Error ? e.message : 'Failed');
     } finally { setAction(null); }
   };
 
-  const handleReject = async (user: UserRecord) => {
+  const handleReject = async (user: UserRecord, e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const label = user.full_name || user.email;
-    if (!confirm(`Reject and delete ${label}'s account?`)) return;
+    console.log('[Admin] Rejecting user:', user.email);
+    if (!window.confirm(`Reject and delete ${label}'s account?`)) return;
     setAction({ id: user.id, type: 'reject' });
     try {
       await rejectUser(user.id);
       await loadUsers();
     } catch (e) {
+      console.error('[Admin] Reject error:', e);
       showMsg(user.id, false, e instanceof Error ? e.message : 'Failed');
     } finally { setAction(null); }
   };
 
-  const handleToggleRole = async (user: UserRecord) => {
+  const handleToggleRole = async (user: UserRecord, e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const label = user.full_name || user.email;
     const next = user.role === 'admin' ? 'Member' : 'Admin';
-    if (!confirm(`Change ${label}'s role to ${next}?`)) return;
+    console.log('[Admin] Toggling role for:', user.email, 'Current:', user.role, 'Next:', next);
+    
+    if (!window.confirm(`Change ${label}'s role to ${next}?`)) {
+      console.log('[Admin] Role change cancelled by user');
+      return;
+    }
+    
     setAction({ id: user.id, type: 'role' });
     try {
       await toggleUserRole(user.id, user.role);
       showMsg(user.id, true, `Changed to ${next}`);
       await loadUsers();
     } catch (e) {
+      console.error('[Admin] Role toggle error:', e);
       showMsg(user.id, false, e instanceof Error ? e.message : 'Failed');
     } finally { setAction(null); }
   };
 
-  const handleDelete = async (user: UserRecord) => {
+  const handleDelete = async (user: UserRecord, e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const label = user.full_name || user.email;
-    if (!confirm(`Permanently delete ${label}'s account?\nThis action cannot be undone.`)) return;
+    console.log('[Admin] Deleting user:', user.email);
+    if (!window.confirm(`Permanently delete ${label}'s account?\nThis action cannot be undone.`)) return;
     setAction({ id: user.id, type: 'delete' });
     try {
       await rejectUser(user.id);
       await loadUsers();
     } catch (e) {
+      console.error('[Admin] Delete error:', e);
       showMsg(user.id, false, e instanceof Error ? e.message : 'Delete failed');
     } finally { setAction(null); }
   };
 
-  const handleReset = async (user: UserRecord) => {
+  const handleReset = async (user: UserRecord, e?: React.MouseEvent) => {
+    if (e) { e.preventDefault(); e.stopPropagation(); }
     const label = user.full_name || user.email;
-    if (!confirm(`Reset ${label}'s password to 111111?`)) return;
+    console.log('[Admin] Resetting password for:', user.email);
+    if (!window.confirm(`Reset ${label}'s password to 111111?`)) return;
     setAction({ id: user.id, type: 'reset' });
     try {
       await resetUserPassword(user.id);
       showMsg(user.id, true, 'Password reset');
     } catch (e) {
+      console.error('[Admin] Reset error:', e);
       showMsg(user.id, false, e instanceof Error ? e.message : 'Failed');
     } finally { setAction(null); }
   };
@@ -167,11 +187,11 @@ export default function AdminPage() {
                     <span className={`reset-msg ${msg.ok ? 'reset-ok' : 'reset-fail'}`}>{msg.text}</span>
                   )}
                   <div className="action-btns">
-                    <button className="approve-btn" onClick={() => handleApprove(user)} disabled={busy}>
+                    <button className="approve-btn" onClick={(e) => handleApprove(user, e)} disabled={busy}>
                       {busy && action?.type === 'approve' ? <Loader2 size={14} className="spin-icon" /> : <Check size={14} />}
                       Approve
                     </button>
-                    <button className="reject-btn" onClick={() => handleReject(user)} disabled={busy}>
+                    <button className="reject-btn" onClick={(e) => handleReject(user, e)} disabled={busy}>
                       {busy && action?.type === 'reject' ? <Loader2 size={14} className="spin-icon" /> : <X size={14} />}
                       Reject
                     </button>
@@ -216,15 +236,15 @@ export default function AdminPage() {
                     <span className={`reset-msg ${msg.ok ? 'reset-ok' : 'reset-fail'}`}>{msg.text}</span>
                   )}
                   <div className="action-btns">
-                    <button className="role-btn" onClick={() => handleToggleRole(user)} disabled={busy} title={isAdminUser ? 'Change to Member' : 'Change to Admin'}>
+                    <button className="role-btn" onClick={(e) => handleToggleRole(user, e)} disabled={busy} title={isAdminUser ? 'Change to Member' : 'Change to Admin'}>
                       {busy && action?.type === 'role' ? <Loader2 size={14} className="spin-icon" /> : <Shield size={14} />}
                       {isAdminUser ? 'Make Member' : 'Make Admin'}
                     </button>
-                    <button className="reset-btn" onClick={() => handleReset(user)} disabled={busy} title="Reset password to 111111">
+                    <button className="reset-btn" onClick={(e) => handleReset(user, e)} disabled={busy} title="Reset password to 111111">
                       {busy && action?.type === 'reset' ? <Loader2 size={14} className="spin-icon" /> : <RotateCcw size={14} />}
                       Reset PW
                     </button>
-                    <button className="delete-btn" onClick={() => handleDelete(user)} disabled={busy} title="Delete account">
+                    <button className="delete-btn" onClick={(e) => handleDelete(user, e)} disabled={busy} title="Delete account">
                       {busy && action?.type === 'delete' ? <Loader2 size={14} className="spin-icon" /> : <Trash2 size={14} />}
                       Delete
                     </button>
