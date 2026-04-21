@@ -2,6 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { supabaseAdmin } from '@/lib/supabase-admin';
 import { CheckCircle, AlertTriangle, Clock, Briefcase, Tag, ChevronDown } from 'lucide-react';
 import ArchiveSection from './ArchiveSection';
+import Link from 'next/link';
 import './History.css';
 
 interface DailyTask {
@@ -43,6 +44,11 @@ async function getHistoryTasks(): Promise<DailyTask[]> {
   return data ?? [];
 }
 
+async function getProjectId(name: string): Promise<number | null> {
+  const { data } = await supabase.from('projects').select('id').eq('name', name).maybeSingle();
+  return data?.id ?? null;
+}
+
 function getPriorityClass(priority: string) {
   const map: Record<string, string> = {
     Low: 'priority-low', Medium: 'priority-medium',
@@ -53,6 +59,13 @@ function getPriorityClass(priority: string) {
 
 export default async function HistoryPage() {
   const [tasks, archives] = await Promise.all([getHistoryTasks(), getMonthlyArchives()]);
+
+  // Resolve project IDs for links
+  const projectNames = [...new Set(tasks.map(t => t.project_name))];
+  const projectMap: Record<string, number | null> = {};
+  for (const name of projectNames) {
+    projectMap[name] = await getProjectId(name);
+  }
 
   // All unique employees ever seen (used to calc missing per day)
   const allEmployees = [...new Set(tasks.map(t => t.employee_name))].sort();
@@ -144,7 +157,14 @@ export default async function HistoryPage() {
                             <div>
                               <span className="hcard-name">{task.employee_name}</span>
                               <span className="trc-project" style={{ marginTop: 4 }}>
-                                <Briefcase size={10} />{task.project_name}
+                                <Briefcase size={10} />
+                                {projectMap[task.project_name] ? (
+                                  <Link href={`/projects/${projectMap[task.project_name]}`} className="hover-link">
+                                    {task.project_name}
+                                  </Link>
+                                ) : (
+                                  task.project_name
+                                )}
                               </span>
                             </div>
                           </div>
@@ -161,7 +181,9 @@ export default async function HistoryPage() {
                         <div className="hcard-body">
                           <div className="trc-section">
                             <span className="trc-label">Accomplishments</span>
-                            <p className="trc-text">{task.accomplishments}</p>
+                            <Link href={`/daily-tasks/${task.id}`} className="trc-text hover-card-link">
+                              {task.accomplishments}
+                            </Link>
                           </div>
                           {task.blockers && (
                             <div className="trc-section">
