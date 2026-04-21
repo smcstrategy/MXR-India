@@ -32,9 +32,10 @@ export default function PWAInstallButton() {
     };
   }, []);
 
-  if (installed || !prompt) return null;
+  if (installed) return null;
 
   const handleClick = async () => {
+    if (!prompt) return;
     await prompt.prompt();
     const { outcome } = await prompt.userChoice;
     if (outcome === 'accepted') setInstalled(true);
@@ -46,6 +47,7 @@ export default function PWAInstallButton() {
       className="nav-item install-btn"
       onClick={handleClick}
       title="Add to Desktop"
+      style={{ opacity: prompt ? 1 : 0.5, cursor: prompt ? 'pointer' : 'default' }}
     >
       <Monitor size={20} />
       <span>Add to Desktop</span>
