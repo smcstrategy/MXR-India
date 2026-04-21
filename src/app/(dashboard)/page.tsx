@@ -1,6 +1,7 @@
 import { CheckCircle, Clock, AlertTriangle, Tag, Briefcase, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import TaskActions from './daily-tasks/TaskActions';
+import Link from 'next/link';
 import './Dashboard.css';
 import './reports/Reports.css';
 
@@ -34,6 +35,11 @@ async function getRecentTasks(): Promise<DailyTask[]> {
   return data ?? [];
 }
 
+async function getProjectId(name: string): Promise<number | null> {
+  const { data } = await supabase.from('projects').select('id').eq('name', name).maybeSingle();
+  return data?.id ?? null;
+}
+
 function getPriorityClass(priority: string) {
   const map: Record<string, string> = {
     Low: 'priority-low',
@@ -59,10 +65,12 @@ function formatDateLabel(dateStr: string) {
 export default async function Dashboard() {
   const recentTasks = await getRecentTasks();
   
-  // Get current user session
-  const { data: { user } } = await supabase.auth.getUser();
-  const currentUserId = user?.id ?? null;
-  const isAdmin = user?.user_metadata?.role === 'admin';
+  // Resolve project IDs for links
+  const projectNames = [...new Set(recentTasks.map(t => t.project_name))];
+  const projectMap: Record<string, number | null> = {};
+  for (const name of projectNames) {
+    projectMap[name] = await getProjectId(name);
+  }
 
   const today = new Date().toISOString().split('T')[0];
   const todayTasks = recentTasks.filter(t => t.task_date === today);
@@ -113,7 +121,13 @@ export default async function Dashboard() {
                     </div>
                     <div className="status-person-info">
                       <span className="status-name">{task.employee_name}</span>
-                      <span className="status-project">{task.project_name}</span>
+                      {projectMap[task.project_name] ? (
+                        <Link href={`/projects/${projectMap[task.project_name]}`} className="status-project hover-link">
+                          {task.project_name}
+                        </Link>
+                      ) : (
+                        <span className="status-project">{task.project_name}</span>
+                      )}
                     </div>
                     {task.hours_spent != null && (
                       <span className="status-hours">{task.hours_spent}h</span>
@@ -183,7 +197,13 @@ export default async function Dashboard() {
                           <span className="employee-name">{task.employee_name}</span>
                           <span className="project-label">
                             <Briefcase size={10} style={{ display: 'inline', marginRight: 4 }} />
-                            {task.project_name}
+                            {projectMap[task.project_name] ? (
+                              <Link href={`/projects/${projectMap[task.project_name]}`} className="hover-link">
+                                {task.project_name}
+                              </Link>
+                            ) : (
+                              task.project_name
+                            )}
                           </span>
                         </div>
                       </div>
@@ -203,9 +223,7 @@ export default async function Dashboard() {
                         </span>
                         <TaskActions 
                           taskId={task.id} 
-                          ownerId={task.user_id} 
-                          currentUserId={currentUserId} 
-                          isAdmin={isAdmin} 
+                          ownerId={task.user_id}
                         />
                       </div>
                     </div>
@@ -213,18 +231,14 @@ export default async function Dashboard() {
                     <div className="report-card-body">
                       <div className="report-section">
                         <span className="report-section-label">Accomplishments</span>
-                        <p className="report-section-text">{task.accomplishments}</p>
+                        <Link href={`/daily-tasks/${task.id}`} className="report-section-text hover-card-link">
+                          {task.accomplishments}
+                        </Link>
                       </div>
                       {task.blockers && (
                         <div className="report-section">
                           <span className="report-section-label blocker-label">Blockers</span>
                           <p className="report-section-text">{task.blockers}</p>
-                        </div>
-                      )}
-                      {task.tomorrow_plan && (
-                        <div className="report-section">
-                          <span className="report-section-label">Tomorrow&apos;s Plan</span>
-                          <p className="report-section-text">{task.tomorrow_plan}</p>
                         </div>
                       )}
                     </div>
