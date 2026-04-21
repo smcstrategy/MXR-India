@@ -1,10 +1,12 @@
 import { CheckCircle, Clock, AlertTriangle, Tag, Briefcase, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import TaskActions from './daily-tasks/TaskActions';
 import './Dashboard.css';
 import './reports/Reports.css';
 
 interface DailyTask {
   id: number;
+  user_id: string | null;
   task_date: string;
   employee_name: string;
   project_name: string;
@@ -56,6 +58,11 @@ function formatDateLabel(dateStr: string) {
 
 export default async function Dashboard() {
   const recentTasks = await getRecentTasks();
+  
+  // Get current user session
+  const { data: { user } } = await supabase.auth.getUser();
+  const currentUserId = user?.id ?? null;
+  const isAdmin = user?.user_metadata?.role === 'admin';
 
   const today = new Date().toISOString().split('T')[0];
   const todayTasks = recentTasks.filter(t => t.task_date === today);
@@ -194,6 +201,12 @@ export default async function Dashboard() {
                         <span className={`status-badge status-${task.status.toLowerCase()}`}>
                           {task.status}
                         </span>
+                        <TaskActions 
+                          taskId={task.id} 
+                          ownerId={task.user_id} 
+                          currentUserId={currentUserId} 
+                          isAdmin={isAdmin} 
+                        />
                       </div>
                     </div>
 

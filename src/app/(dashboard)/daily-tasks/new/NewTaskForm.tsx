@@ -3,7 +3,7 @@
 import { useActionState, useState, useEffect } from 'react';
 import { ArrowLeft, Save, Loader2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
-import { createDailyTask } from '../actions';
+import { createDailyTask, updateDailyTask } from '../actions';
 import { supabase } from '@/lib/supabase';
 import './NewTaskForm.css';
 
@@ -13,8 +13,22 @@ interface Project {
   status: string;
 }
 
+interface DailyTask {
+  id: number;
+  task_date: string;
+  employee_name: string;
+  project_name: string;
+  task_category: string;
+  hours_spent: number | null;
+  accomplishments: string;
+  blockers: string | null;
+  tomorrow_plan: string | null;
+  priority: string;
+}
+
 interface Props {
   projects: Project[];
+  initialData?: DailyTask;
 }
 
 const CATEGORIES = ['Development', 'Testing', 'Meeting', 'Design', 'Documentation', 'Deployment', 'Support', 'General'];
@@ -22,27 +36,39 @@ const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 
 type ActionState = { success?: boolean; error?: string } | null;
 
-export default function NewTaskForm({ projects }: Props) {
+export default function NewTaskForm({ projects, initialData }: Props) {
+  const isEdit = !!initialData;
   const [showCustomProject, setShowCustomProject] = useState(false);
-  const [employeeName, setEmployeeName] = useState('');
+  const [employeeName, setEmployeeName] = useState(initialData?.employee_name ?? '');
+  const [userId, setUserId] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
-      const name =
-        data.user?.user_metadata?.full_name ??
-        data.user?.email ??
-        '';
-      setEmployeeName(name);
+      const uId = data.user?.id ?? '';
+      setUserId(uId);
+      
+      if (!isEdit) {
+        const name =
+          data.user?.user_metadata?.full_name ??
+          data.user?.email ??
+          '';
+        setEmployeeName(name);
+      }
     });
-  }, []);
+  }, [isEdit]);
 
   const [state, formAction, isPending] = useActionState<ActionState, FormData>(
     async (_prev: ActionState, formData: FormData) => {
       try {
-        await createDailyTask(formData);
+        if (isEdit) {
+          await updateDailyTask(initialData.id, formData);
+        } else {
+          await createDailyTask(formData);
+        }
         return { success: true };
       } catch (e: unknown) {
         const msg = e instanceof Error ? e.message : 'Unknown error';
+        // Handle redirect from server action
         if (msg.includes('NEXT_REDIRECT')) throw e;
         return { error: msg };
       }
@@ -54,6 +80,16 @@ export default function NewTaskForm({ projects }: Props) {
   const activeProjects = projects.filter(p => p.status === 'active');
   const salesProjects = projects.filter(p => p.status === 'sales');
 
+  // Check if project is in list
+  const isProjectInList = (name: string) => [...activeProjects, ...salesProjects].some(p => p.name === name);
+  const initialProjectValue = initialData ? (isProjectInList(initialData.project_name) ? initialData.project_name : '__other__') : '';
+
+  useEffect(() => {
+    if (initialData && !isProjectInList(initialData.project_name)) {
+      setShowCustomProject(true);
+    }
+  }, [initialData, activeProjects, salesProjects]);
+
   return (
     <div className="new-task-container">
       <div className="new-task-header">
@@ -62,8 +98,10 @@ export default function NewTaskForm({ projects }: Props) {
           <span>Back to Dashboard</span>
         </Link>
         <div>
-          <h1 className="heading-xl">Register Daily Task</h1>
-          <p className="subtitle text-secondary">Log your work activities for the day.</p>
+          <h1 className="heading-xl">{isEdit ? 'Edit Daily Task' : 'Register Daily Task'}</h1>
+          <p className="subtitle text-secondary">
+            {isEdit ? 'Update your activity log.' : 'Log your work activities for the day.'}
+          </p>
         </div>
       </div>
 
@@ -76,6 +114,8 @@ export default function NewTaskForm({ projects }: Props) {
 
       <div className="new-task-card glass-panel">
         <form action={formAction} className="task-form">
+          <input type="hidden" name="user_id" value={userId} />
+
           {/* Row 1: Employee & Date */}
           <div className="form-row">
             <div className="input-group flex-1">
@@ -88,8 +128,8 @@ export default function NewTaskForm({ projects }: Props) {
                 name="employee_name"
                 className="input-field input-autofilled"
                 value={employeeName}
-                onChange={() => {}}
-                readOnly
+                onChange={(e) => setEmployeeName(e.target.value)}
+                readOnly={!isEdit} // Allow edit if admin/owner? No, usually name is fixed. But in edit mode we might want it visible.
                 placeholder="Loading user info..."
                 required
                 disabled={isPending}
@@ -104,7 +144,7 @@ export default function NewTaskForm({ projects }: Props) {
                 id="task_date"
                 name="task_date"
                 className="input-field"
-                defaultValue={today}
+                defaultValue={initialData?.task_date ?? today}
                 required
                 disabled={isPending}
               />
@@ -121,6 +161,7 @@ export default function NewTaskForm({ projects }: Props) {
                 id="project_name"
                 name="project_name"
                 className="input-field"
+                defaultValue={initialProjectValue}
                 required
                 disabled={isPending}
                 onChange={e => setShowCustomProject(e.target.value === '__other__')}
@@ -149,6 +190,7 @@ export default function NewTaskForm({ projects }: Props) {
                   className="input-field"
                   placeholder="Enter project name..."
                   style={{ marginTop: 8 }}
+                  defaultValue={initialProjectValue === '__other__' ? initialData?.project_name : ''}
                   required
                   disabled={isPending}
                 />
@@ -156,7 +198,13 @@ export default function NewTaskForm({ projects }: Props) {
             </div>
             <div className="input-group" style={{ width: '200px' }}>
               <label className="input-label" htmlFor="task_category">Category</label>
-              <select id="task_category" name="task_category" className="input-field" disabled={isPending}>
+              <select 
+                id="task_category" 
+                name="task_category" 
+                className="input-field" 
+                disabled={isPending}
+                defaultValue={initialData?.task_category ?? 'General'}
+              >
                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -175,12 +223,19 @@ export default function NewTaskForm({ projects }: Props) {
                 min="0"
                 max="24"
                 step="0.5"
+                defaultValue={initialData?.hours_spent ?? ''}
                 disabled={isPending}
               />
             </div>
             <div className="input-group" style={{ width: '160px' }}>
               <label className="input-label" htmlFor="priority">Priority</label>
-              <select id="priority" name="priority" className="input-field" defaultValue="Medium" disabled={isPending}>
+              <select 
+                id="priority" 
+                name="priority" 
+                className="input-field" 
+                defaultValue={initialData?.priority ?? 'Medium'} 
+                disabled={isPending}
+              >
                 {PRIORITIES.map(p => <option key={p} value={p}>{p}</option>)}
               </select>
             </div>
@@ -197,6 +252,7 @@ export default function NewTaskForm({ projects }: Props) {
               className="input-field textarea"
               rows={4}
               placeholder="Describe the tasks completed, milestones reached, meetings attended..."
+              defaultValue={initialData?.accomplishments ?? ''}
               required
               disabled={isPending}
             />
@@ -211,6 +267,7 @@ export default function NewTaskForm({ projects }: Props) {
               className="input-field textarea"
               rows={2}
               placeholder="List any dependencies or problems you are facing..."
+              defaultValue={initialData?.blockers ?? ''}
               disabled={isPending}
             />
           </div>
@@ -224,6 +281,7 @@ export default function NewTaskForm({ projects }: Props) {
               className="input-field textarea"
               rows={2}
               placeholder="Briefly describe what you'll work on next..."
+              defaultValue={initialData?.tomorrow_plan ?? ''}
               disabled={isPending}
             />
           </div>
@@ -241,12 +299,12 @@ export default function NewTaskForm({ projects }: Props) {
               {isPending ? (
                 <>
                   <Loader2 size={18} className="spin-icon" />
-                  <span>Submitting...</span>
+                  <span>{isEdit ? 'Updating...' : 'Submitting...'}</span>
                 </>
               ) : (
                 <>
                   <Save size={18} />
-                  <span>Submit Task</span>
+                  <span>{isEdit ? 'Update Task' : 'Submit Task'}</span>
                 </>
               )}
             </button>
