@@ -193,10 +193,10 @@ export default async function Dashboard() {
                         <div className="employee-avatar">
                           {task.employee_name.charAt(0).toUpperCase()}
                         </div>
-                        <div>
+                        <div className="employee-name-wrap">
                           <span className="employee-name">{task.employee_name}</span>
                           <span className="project-label">
-                            <Briefcase size={10} style={{ display: 'inline', marginRight: 4 }} />
+                            <Briefcase size={10} />
                             {projectMap[task.project_name] ? (
                               <Link href={`/projects/${projectMap[task.project_name]}`} className="hover-link">
                                 {task.project_name}
@@ -214,13 +214,10 @@ export default async function Dashboard() {
                             {task.hours_spent}h
                           </span>
                         )}
-                        <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
+                        <div className={`priority-badge ${getPriorityClass(task.priority)}`}>
                           {task.priority === 'Critical' && <AlertTriangle size={11} />}
-                          {task.priority}
-                        </span>
-                        <span className={`status-badge status-${task.status.toLowerCase()}`}>
-                          {task.status}
-                        </span>
+                          <span>{task.priority}</span>
+                        </div>
                         <TaskActions 
                           taskId={task.id} 
                           ownerId={task.user_id}
@@ -244,11 +241,17 @@ export default async function Dashboard() {
                     </div>
 
                     <div className="report-card-footer">
-                      <span className="category-tag">
-                        <Tag size={11} />
-                        {task.task_category}
-                      </span>
+                      <div className="footer-tags">
+                        <span className="category-tag">
+                          <Tag size={11} />
+                          {task.task_category}
+                        </span>
+                        <span className={`status-badge status-${task.status.toLowerCase()}`}>
+                          {task.status}
+                        </span>
+                      </div>
                     </div>
+
                   </div>
                 ))}
               </div>
