@@ -9,36 +9,20 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 export default function PWAInstallButton() {
-  const [prompt, setPrompt]       = useState<BeforeInstallPromptEvent | null>(null);
-  const [installed, setInstalled] = useState(false);
+  const [prompt, setPrompt] = useState<BeforeInstallPromptEvent | null>(null);
 
   useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setInstalled(true);
-      return;
-    }
-
     const handler = (e: Event) => {
       e.preventDefault();
       setPrompt(e as BeforeInstallPromptEvent);
     };
-    const installedHandler = () => setInstalled(true);
-
     window.addEventListener('beforeinstallprompt', handler);
-    window.addEventListener('appinstalled', installedHandler);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handler);
-      window.removeEventListener('appinstalled', installedHandler);
-    };
+    return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
-
-  if (installed) return null;
 
   const handleClick = async () => {
     if (!prompt) return;
     await prompt.prompt();
-    const { outcome } = await prompt.userChoice;
-    if (outcome === 'accepted') setInstalled(true);
     setPrompt(null);
   };
 
