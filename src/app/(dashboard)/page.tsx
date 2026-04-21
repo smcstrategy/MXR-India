@@ -1,6 +1,7 @@
-import { CheckCircle, Clock, AlertTriangle, Tag, Briefcase } from 'lucide-react';
+import { CheckCircle, Clock, AlertTriangle, Tag, Briefcase, Calendar } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import './Dashboard.css';
+import './reports/Reports.css';
 
 interface DailyTask {
   id: number;
@@ -41,14 +42,24 @@ function getPriorityClass(priority: string) {
   return map[priority] ?? 'priority-medium';
 }
 
+function formatDateLabel(dateStr: string) {
+  const today = new Date().toISOString().split('T')[0];
+  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+  if (dateStr === today) return 'Today';
+  if (dateStr === yesterday) return 'Yesterday';
+  return new Date(dateStr).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+  });
+}
+
 export default async function Dashboard() {
   const recentTasks = await getRecentTasks();
 
   const today = new Date().toISOString().split('T')[0];
   const todayTasks = recentTasks.filter(t => t.task_date === today);
-  const todayHours = todayTasks.reduce((acc, t) => acc + (t.hours_spent ?? 0), 0);
 
-  // 지난 30일 기준으로 활동한 직원 목록 추출 → 오늘 미제출 계산
   const allEmployees = [...new Set(recentTasks.map(t => t.employee_name))].sort();
   const submittedSet = new Set(todayTasks.map(t => t.employee_name));
   const notSubmitted = allEmployees.filter(name => !submittedSet.has(name));
@@ -56,6 +67,12 @@ export default async function Dashboard() {
   const todayLabel = new Date().toLocaleDateString('en-US', {
     year: 'numeric', month: 'long', day: 'numeric', weekday: 'long',
   });
+
+  const grouped = recentTasks.reduce<Record<string, DailyTask[]>>((acc, t) => {
+    (acc[t.task_date] ??= []).push(t);
+    return acc;
+  }, {});
+  const sortedDates = Object.keys(grouped).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="dashboard-container">
@@ -132,68 +149,84 @@ export default async function Dashboard() {
         </div>
       </div>
 
-      {/* 오늘 일일업무 상세 */}
-      {todayTasks.length > 0 && (
-        <div className="today-reports-section">
-          <h2 className="heading-lg" style={{ marginBottom: 16 }}>Today&apos;s Reports</h2>
-          <div className="today-report-cards">
-            {todayTasks.map(task => (
-              <div key={task.id} className="today-report-card glass-panel">
-                <div className="trc-header">
-                  <div className="trc-employee">
-                    <div className="employee-avatar">
-                      {task.employee_name.charAt(0).toUpperCase()}
-                    </div>
-                    <div className="trc-employee-info">
-                      <span className="trc-employee-name">{task.employee_name}</span>
-                      <span className="trc-project"><Briefcase size={10} />{task.project_name}</span>
-                    </div>
-                  </div>
-                  <div className="trc-meta">
-                    {task.hours_spent != null && (
-                      <span className="hours-chip">
-                        <Clock size={12} />
-                        {task.hours_spent}h
-                      </span>
-                    )}
-                    <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
-                      {task.priority === 'Critical' && <AlertTriangle size={11} />}
-                      {task.priority}
-                    </span>
-                  </div>
+      {/* 전체 일일업무 타임라인 */}
+      {recentTasks.length > 0 && (
+        <div className="reports-timeline">
+          {sortedDates.map((date) => (
+            <div key={date} className="date-section">
+              <div className="date-section-header">
+                <div className="date-pill">
+                  <Calendar size={14} />
+                  <span>{formatDateLabel(date)}</span>
                 </div>
-
-                <div className="trc-body">
-                  <div className="trc-section">
-                    <span className="trc-label">Accomplishments</span>
-                    <p className="trc-text">{task.accomplishments}</p>
-                  </div>
-                  {task.blockers && (
-                    <div className="trc-section">
-                      <span className="trc-label trc-label-danger">Issues / Blockers</span>
-                      <p className="trc-text">{task.blockers}</p>
-                    </div>
-                  )}
-                  {task.tomorrow_plan && (
-                    <div className="trc-section">
-                      <span className="trc-label">Tomorrow&apos;s Plan</span>
-                      <p className="trc-text">{task.tomorrow_plan}</p>
-                    </div>
-                  )}
-                </div>
-
-                <div className="trc-footer">
-                  <span className="category-tag">
-                    <Tag size={11} />
-                    {task.task_category}
-                  </span>
-                  <span className={`status-badge status-${task.status.toLowerCase()}`}>
-                    {task.status}
-                  </span>
-                </div>
+                <span className="date-count">
+                  {grouped[date].length} report{grouped[date].length > 1 ? 's' : ''}
+                </span>
               </div>
-            ))}
-          </div>
+
+              <div className="report-cards">
+                {grouped[date].map((task) => (
+                  <div key={task.id} className="report-card glass-panel">
+                    <div className="report-card-header">
+                      <div className="employee-info">
+                        <div className="employee-avatar">
+                          {task.employee_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <span className="employee-name">{task.employee_name}</span>
+                          <span className="project-label">
+                            <Briefcase size={10} style={{ display: 'inline', marginRight: 4 }} />
+                            {task.project_name}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="report-meta">
+                        {task.hours_spent != null && (
+                          <span className="hours-chip">
+                            <Clock size={12} />
+                            {task.hours_spent}h
+                          </span>
+                        )}
+                        <span className={`priority-badge ${getPriorityClass(task.priority)}`}>
+                          {task.priority === 'Critical' && <AlertTriangle size={11} />}
+                          {task.priority}
+                        </span>
+                        <span className={`status-badge status-${task.status.toLowerCase()}`}>
+                          {task.status}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="report-card-body">
+                      <div className="report-section">
+                        <span className="report-section-label">Accomplishments</span>
+                        <p className="report-section-text">{task.accomplishments}</p>
+                      </div>
+                      {task.blockers && (
+                        <div className="report-section">
+                          <span className="report-section-label blocker-label">Blockers</span>
+                          <p className="report-section-text">{task.blockers}</p>
+                        </div>
+                      )}
+                      {task.tomorrow_plan && (
+                        <div className="report-section">
+                          <span className="report-section-label">Tomorrow&apos;s Plan</span>
+                          <p className="report-section-text">{task.tomorrow_plan}</p>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="report-card-footer">
+                      <span className="category-tag">
+                        <Tag size={11} />
+                        {task.task_category}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
