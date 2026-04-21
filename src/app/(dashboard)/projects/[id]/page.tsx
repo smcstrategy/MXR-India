@@ -2,7 +2,7 @@ import { supabase } from '@/lib/supabase';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Briefcase, Calendar, Clock, CheckCircle, List, User, Tag } from 'lucide-react';
-import '../daily-tasks/[id]/TaskDetail.css'; // Reusing some detail styles
+import '../../daily-tasks/[id]/TaskDetail.css'; // Reusing some detail styles
 
 interface Props {
   params: Promise<{ id: string }>;
